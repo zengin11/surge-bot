@@ -22,9 +22,13 @@ from collections import Counter
 import os
 from pathlib import Path
 
-import dotenv
+import xml.etree.ElementTree as ET
 
+from dotenv import load_dotenv
+
+load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
+
 
 # Set your preferences
 
@@ -178,61 +182,60 @@ FullCardsDict = {}
 
 async def update_cards():
     getSavedCardLists()
-    HugeString = ''
-    with open(CardDatabaseLocation, encoding='utf-8') as CardDatabaseFile:
-        for line in CardDatabaseFile:
-            #print(line.replace('\n',""))
-            HugeString += line.replace('\n',"___")
+    
+    tree = ET.parse(CardDatabaseLocation)
+    root = tree.getroot()
 
+    cards_element = root.find('cards')
+    if cards_element is None:
+        raise ValueError("No <cards> section found in XML.")
 
-    cards = re.findall(r"\<card>(.*?)\</card>", HugeString)
-
-    for cardEntry in cards:
-        name = re.findall(r"\<name>(.*?)\</name>", cardEntry)[0]
+    for card in cards_element.findall('card'):
+        name = card.findtext('name', default='')
         indexName = nonAlph.sub('', name).lower()
-        FullCardsDict[indexName] = {'name': name, 'manacost': '', 'text': '', 'type': ''}
-        
-        manacost = re.findall(r"\<manacost>(.*?)\</manacost>", cardEntry)[0]
-        FullCardsDict[indexName]['manacost'] = manaswap(manacost)
-        
-        text = re.findall(r"\<text>(.*?)\</text>", cardEntry)[0]
-        FullCardsDict[indexName]['text'] = manaswap(text.replace('~', name).replace("___","\n"))
-        
-        cardtype = re.findall(r"\<type>(.*?)\</type>", cardEntry)[0]
-        FullCardsDict[indexName]['type'] = cardtype
-        
-        URL = re.findall(r'picurl="(.*?)">SLA</set>', cardEntry)[0]
-        FullCardsDict[indexName]['URL'] = URL
-        
-        rarity = re.findall(r'\<set rarity="(.*?)\" picurl\=', cardEntry)[0]
-        FullCardsDict[indexName]['rarity'] = rarity
-        
-        try: 
-            pt = re.findall(r"\<pt>(.*?)\</pt>", cardEntry)[0]
-            if pt != '':
-                FullCardsDict[indexName]['pt'] = pt
-        except: pass
-        
-        try: 
-            loyalty = re.findall(r"\<loyalty>(.*?)\</loyalty>", cardEntry)[0]
-            if loyalty != '':
-                FullCardsDict[indexName]['loyalty'] = loyalty
-        except: pass
-        
-        try: 
-            colors = re.findall(r"\<colors>(.*?)\</colors>", cardEntry)[0]
-            FullCardsDict[indexName]['colors'] = colors
-        except: FullCardsDict[indexName]['colors'] = ''
-                
-        if '<related attach="transform">' in cardEntry:
-            transformTitle = re.findall(r'\"transform">(.*?)\</related>', cardEntry)[0]
-            FullCardsDict[indexName]['transform'] = transformTitle
 
-    for item in FullCardsDict:
-        refTitlesDict[re.sub(r'[^A-Za-z0-9]+', '', FullCardsDict[item]['name']).lower()] = FullCardsDict[item]['name']
+        # Basic fields
+        text = card.findtext('text', default='').replace('~', name)
 
+        # Nested <prop> fields
+        prop = card.find('prop')
+        manacost = prop.findtext('manacost', default='') if prop is not None else ''
+        cardtype = prop.findtext('type', default='') if prop is not None else ''
+        pt = prop.findtext('pt', default='') if prop is not None else ''
+        loyalty = prop.findtext('loyalty', default='') if prop is not None else ''
+        colors = prop.findtext('colors', default='') if prop is not None else ''
 
-update_cards()
+        # <set> tag with attributes
+        set_tag = card.find('set')
+        URL = set_tag.get('picurl') if set_tag is not None else ''
+        rarity = set_tag.get('rarity') if set_tag is not None else ''
+
+        # Look for transform-related info
+        transform = None
+        for related in card.findall('related'):
+            if related.get('attach') == 'transform':
+                transform = related.text
+                break
+
+        FullCardsDict[indexName] = {
+            'name': name,
+            'manacost': manaswap(manacost),
+            'text': manaswap(text),
+            'type': cardtype,
+            'URL': URL,
+            'rarity': rarity,
+            'pt': pt if pt else None,
+            'loyalty': loyalty if loyalty else None,
+            'colors': colors,
+        }
+
+        if transform:
+            FullCardsDict[indexName]['transform'] = transform
+
+    # Populate reference titles
+    for indexName, data in FullCardsDict.items():
+        clean_name = re.sub(r'[^A-Za-z0-9]+', '', data['name']).lower()
+        refTitlesDict[clean_name] = data['name']
 
 async def card_updater_loop():
     while True:
@@ -273,10 +276,12 @@ def SearchCard(cardtitle):
 
         bodyText = FullCardsDict[cardIndex]['type'] + " •  [" + FullCardsDict[cardIndex]['rarity'] + "]"
         bodyText += '\n' + FullCardsDict[cardIndex]['text']
-        if 'pt' in FullCardsDict[cardIndex]:
-            bodyText += '\n' + FullCardsDict[cardIndex]['pt']
-        if 'loyalty' in FullCardsDict[cardIndex]:
-            bodyText += '\n' + FullCardsDict[cardIndex]['loyalty']
+
+        PT = FullCardsDict[cardIndex].get('pt')
+        if PT: bodyText += '\n' + PT
+
+        loyalty = FullCardsDict[cardIndex].get('loyalty')
+        if loyalty: bodyText += '\n' + loyalty
 
         if 'transform' in FullCardsDict[cardIndex]:
             transformTitle = FullCardsDict[cardIndex]['transform']
@@ -285,10 +290,13 @@ def SearchCard(cardtitle):
             bodyText += '\n' + FullCardsDict[transformIndex]['name']
             bodyText += '\n' + FullCardsDict[transformIndex]['type']
             bodyText += '\n' + FullCardsDict[transformIndex]['text']
-            if 'pt' in FullCardsDict[transformIndex]:
-                bodyText += '\n' + FullCardsDict[transformIndex]['pt']
-            if 'loyalty' in FullCardsDict[transformIndex]:
-                bodyText += '\n' + FullCardsDict[transformIndex]['loyalty']
+
+
+            PT = FullCardsDict[transformIndex].get('pt')
+            if PT: bodyText += '\n' + PT
+
+            loyalty = FullCardsDict[transformIndex].get('loyalty')
+            if loyalty: bodyText += '\n' + loyalty
 
     return success, name, manacost, bodyText, URL, color
 
@@ -320,6 +328,10 @@ class Client(commands.Bot):
         except Exception as e:
             print(f'Error syncing commands: {e}')
 
+
+        print("updating cards")
+        await update_cards()
+        print("Updated cards")
 
         client.add_view(DeckOptionsView())
         if persistent_draft_view is None:
