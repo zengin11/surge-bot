@@ -10,7 +10,6 @@ import json
 import copy
 from datetime import datetime, timedelta
 
-import random
 import math
 import random
 import numpy as np
@@ -29,13 +28,20 @@ from dotenv import load_dotenv
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
 
-# Set your preferences
-
-dropbox_base = Path.home() / "Dropbox" / "SLA_Discord_bot"
-mainFolder = dropbox_base
-listFolder = dropbox_base / "SavedVariables"
-CardDatabaseLocation = dropbox_base / "SLA.customcards.xml"
+if ENVIRONMENT == "development":
+    # Set your preferences
+    dropbox_base = Path.home() / "Dropbox" / "SLA_Discord_bot"
+    print(f"Running in development environment, Dropbox base path: {dropbox_base}")
+    mainFolder = dropbox_base
+    listFolder = dropbox_base / "SavedVariables"
+    CardDatabaseLocation = dropbox_base / "SLA.customcards.xml"
+else:
+    mainFolder = Path(os.getcwd())
+    print(f"Running in production environment, root directory: {mainFolder}")
+    listFolder = mainFolder / "SavedVariables"
+    CardDatabaseLocation = mainFolder / "SLA.customcards.xml"
 
 
 
@@ -147,7 +153,7 @@ def getSavedCardLists():
 
     for main in lower_commonsFromSheet_List,lower_uncommonsFromSheet_List,lower_raresFromSheet_List,lower_mythicsFromSheet_List:
         for cardkey in backSideCards_List:
-            try: 
+            try:
                 main.remove(cardkey)
             except: pass
 
@@ -182,7 +188,7 @@ FullCardsDict = {}
 
 async def update_cards():
     getSavedCardLists()
-    
+
     tree = ET.parse(CardDatabaseLocation)
     root = tree.getroot()
 
@@ -246,14 +252,14 @@ def SearchCard(cardtitle):
     cardIndex = re.sub(r'[^A-Za-z0-9]+', '', cardtitle).lower()
     print(cardIndex)
     try: cardIndex = difflib.get_close_matches(cardIndex, FullCardsDict, cutoff=0.8)[0]
-    except: 
+    except:
         potentialHits = []
         for title in refTitlesDict:
-            if title[:len(cardIndex)].lower() == cardIndex or title[len(cardIndex)+1:].lower() == cardIndex: 
+            if title[:len(cardIndex)].lower() == cardIndex or title[len(cardIndex)+1:].lower() == cardIndex:
                 potentialHits.append(refTitlesDict[title])
             elif cardIndex in title.lower():
                 potentialHits.append(refTitlesDict[title])
-                
+
         if len(potentialHits) == 0:
             print(f"{cardIndex}: Failed to find similar card")
             response = f'Couldn\'t find "{cardtitle}"'
@@ -265,7 +271,7 @@ def SearchCard(cardtitle):
             #print(f"{cardIndex}: Found a few similar cards: {potentialHits}")
             response = 'Found more than one "' + cardtitle + '". Did you want...\n- ' + "\n- ".join(potentialHits)
             success, name, manacost, bodyText, URL, color = False, cardtitle, 0, response, 'blank', 'blank'
-        
+
     if cardIndex in FullCardsDict:
         success = True
 
@@ -379,7 +385,7 @@ class Client(commands.Bot):
                     cardTitles = reverseSearch(searchText)
                     if len(cardTitles) == 0:
                         await message.reply(f"No search results for: {searchText}")
-                    else: 
+                    else:
                         responseText = f'{len(cardTitles)} results in Cost, Type, Rules, and P/T for: "' + searchText + '".\n- ' + "\n- ".join(cardTitles)
                         if len(cardTitles) <= 10:
                             await message.reply(responseText)
@@ -389,16 +395,16 @@ class Client(commands.Bot):
 
                 else:
                     success, name, manacost, bodyText, URL, color = SearchCard(cardtitle)
-                    
-                    if success: 
+
+                    if success:
                         embed = discord.Embed(title=(f"{name}  {manacost}") , description = bodyText, url=URL, color=color)
                         embed.set_thumbnail(url=URL)
                         await message.reply(embed=embed)
                     else:
                         await message.reply(bodyText)
-                    
-                                
-        
+
+
+
         if messageString.startswith('!draft'):
             await message.reply("""Looks like you're looking for into on the in-discord draft I can do!
 - Type **\draft-lobby** to get the start menu!
@@ -406,7 +412,7 @@ class Client(commands.Bot):
 - You can start the draft with CPUs to fill out 8 total players. They do are about colors & archetypes and try to build reasonable decks.
 - The draft will end automatically after 10 minutes of inactivity, but your deck is saved whenever it ends.
 - Text commands can perform all buttonable actions, if you prefer them. Type **/draft-commands** *(a slash, not ! )* if you want a list.""")
- 
+
 intents = discord.Intents.default()
 intents.message_content = True
 client = Client(command_prefix="!", intents=intents)
@@ -462,12 +468,12 @@ AllColorsList = ['W', 'U', 'B', 'R', 'G']
 DraftIDsWeightDictBASE = {'RW': 0, 'WB': 0, 'BR': 0, 'BG': 0, 'GU': 0, 'WU': 0, 'UB': 0, 'UR': 0, 'RG': 0, 'GW': 0, 'BRG': 0, 'UBG': 0, 'URG': 0, 'WUG': 0, 'WUR': 0, 'WBR': 0, 'WRG': 0, 'WBG': 0, 'WUB': 0, 'UBR': 0}
 
 def GetCMC(cost):
-    
+
     costValue = 0
-    
+
     if "{" in cost:
         cost = cost.replace("}{"," ").replace("{","").replace("}","")
-    
+
     splitCost = cost.split(' ')
     for bit in splitCost:
         if bit == '':
@@ -476,7 +482,7 @@ def GetCMC(cost):
             costValue += int(bit.replace('}',''))
         else:
             costValue += 1
-    
+
     return costValue
 
 
@@ -490,14 +496,14 @@ def logEpsilonChooser():
             ~25% decent(ε ~ .02)
             ~10% (ε ~ .03)
             ~1% bad (ε ~ .04)
-    """    
+    """
     mean = -1.8
     std_dev = .2
     size = 1
     gaussian_choice = np.random.normal(loc=mean, scale=std_dev)
-    
+
     epsilon = 10**gaussian_choice
-    
+
     return epsilon
 
 
@@ -561,7 +567,7 @@ def findIdentityWeights(cardKey):
 def compute_deck_curve_and_types(deckKeys):
     curve = {}  # {CMC bucket (1-6): count}
     types = {'creature': 0, 'noncreature': 0}
-    
+
     for key in deckKeys:
         card = FullCardsDict[key]
         cmc = GetCMC(manaSymbols(card['manacost']))
@@ -572,13 +578,13 @@ def compute_deck_curve_and_types(deckKeys):
             types['creature'] += 1
         else:
             types['noncreature'] += 1
-            
+
     return dict(sorted(curve.items())), types
 
 
 def adjustIDWeights(DraftIDsWeightDict_Temp, key, current_curve=None, current_type_counts=None):
-    
-    # Scale the importance of each factor in determining a card's weight 
+
+    # Scale the importance of each factor in determining a card's weight
     # 1 = default, higher = more impact, lower = less impact
     # Impact is exponential: Care = 3  =>  result ^ 3
     rarity_Care = 1
@@ -587,21 +593,21 @@ def adjustIDWeights(DraftIDsWeightDict_Temp, key, current_curve=None, current_ty
     ID_challenge_Care = .1
     curve_fit_Care = .1
     type_bias_Care = .1
-    
-    
+
+
     #print(key)
     identityScores = findIdentityWeights(key)
 
     rarityPowers = {'common': 1, 'uncommon': 2, 'rare': 4, 'mythic': 6}
     rarityPower = rarityPowers[FullCardsDict[key]['rarity'].lower()]
-    
+
     #print(f"rarityPower: {rarityPower}")
 
     spreadScore = sum(identityScores.values())
     if spreadScore == 0:
         spreadScore = 1
     specialization = spreadScore ** (-.8)
-    
+
     #print(f"specialization: {specialization}")
 
     # --- Extract card info ---
@@ -618,7 +624,7 @@ def adjustIDWeights(DraftIDsWeightDict_Temp, key, current_curve=None, current_ty
         current_curve = {}
     if current_type_counts is None:
         current_type_counts = {'creature': 0, 'noncreature': 0}
-        
+
     # --- Curve fit: Find proportion of same-value cards (too many or two few?) ---
     ideal_total = sum(ideal_curve.values())
     total_cards_so_far = sum(current_curve.values()) + 1  # +1 to account for this candidate card
@@ -634,7 +640,7 @@ def adjustIDWeights(DraftIDsWeightDict_Temp, key, current_curve=None, current_ty
         curve_fit = 1.0  # If the ideal has 0%, don’t penalize
 
     curve_fit = max(0.1, min(curve_fit, 10.0))
-    
+
     #print(f"curve_fit: {curve_fit} - {ideal_proportion} / {max(current_proportion, 0.001)}")
 
     # --- Type bias dynamic multiplier ---
@@ -649,12 +655,12 @@ def adjustIDWeights(DraftIDsWeightDict_Temp, key, current_curve=None, current_ty
 
     type_bias = ideal_ratio / current_ratio
     type_bias = max(0.1, min(type_bias, 10.0))
-    
+
     #print(f"type_bias: {type_bias} - {ideal_ratio} / {current_ratio}")
 
     # --- Apply weight adjustment ---
     #print(identityScores)
-    
+
     #print(CMC)
 
     baseAdjustment = (
@@ -663,11 +669,11 @@ def adjustIDWeights(DraftIDsWeightDict_Temp, key, current_curve=None, current_ty
     curve_fit**curve_fit_Care *
     type_bias**type_bias_Care *
     100)
-    
+
 
     #print(f"{key}: {CMC} - {curve_fit} - {baseAdjustment}")
 
-    
+
     for ID, score in identityScores.items():
         if score > 0:
             ID_challenge = len(ID) ** -1.5
@@ -699,7 +705,7 @@ def get_deck_color_counts(deckCardKeys):
         for symbol in symbols:
             if len(symbol) == 2: Purity = 0.5 # Hybrid or Twobrid
             else: Purity = 1
-                
+
             for color in AllColorsList:
                 if color in symbol:
                     colorCounts[color] += Purity
@@ -733,7 +739,7 @@ def compute_color_balance(identity, colorCounts):
 
 def ConsiderCardWeights(DraftIDsWeightDict_Temp, draftPackKeys, DeckKeys):
     #print(DraftIDsWeightDict_Temp)
-    
+
     choiceWeightsDict = {}
     #print()
     deckPipsPrior = get_deck_color_counts(DeckKeys)
@@ -746,38 +752,38 @@ def ConsiderCardWeights(DraftIDsWeightDict_Temp, draftPackKeys, DeckKeys):
         curve, types = compute_deck_curve_and_types(DeckKeys)
         CardPlayabilities = adjustIDWeights(CardPlayabilities, key, curve, types)
         deckPips_IFADDED = deckPipsPrior + get_deck_color_counts([key])
-        
-        
+
+
         #print('---')
         #print(f"{key} - {manaSymbols(FullCardsDict[key]['manacost'])}")
         #print(f"Added: {deckPips_IFADDED}")
-        
+
         colorFill = copy.deepcopy(DraftIDsWeightDictBASE)
         for ID in colorFill:
             colorFill[ID] = 1
             tempColorFill = {}
             for manaColor in ID:
                 tempColorFill[manaColor] = deckPips_IFADDED[manaColor]
-            
+
             try: normFactor = 1.0 / sum(tempColorFill.values())
             except: normFactor = 0
             normTempColorFill = {k: v*normFactor for k, v in tempColorFill.items()}
-            
+
             colorFill[ID] = compute_color_balance(ID, normTempColorFill)
-                            
+
         #print(f"ColorFill: {brainPrint(colorFill)}")
-        
+
         #print(f"-- playabilities, Weights, ColorFill -- {key}")
         #brainPrint(CardPlayabilities)
         #brainPrint(DraftIDsWeightDict_Temp)
         #brainPrint(colorFill)
         #print("------")
-                
+
         cardWeight = sum(CardPlayabilities[ID]*DraftIDsWeightDict_Temp[ID]*colorFill[ID] for ID in CardPlayabilities.keys() & DraftIDsWeightDict_Temp.keys() & colorFill.keys())
         #print(f"{key}: {round(cardWeight)}")
         #brainPrint(CardPlayabilities)
         choiceWeightsDict[key] = cardWeight
-    
+
     return choiceWeightsDict
 
 
@@ -788,7 +794,7 @@ def pick_card_weighted(scores: dict[str, float], epsilon: float) -> str:
     Higher scores are favored, but lower scores can be picked occasionally depending on:
     - How close they are to the best score
     - The epsilon parameter (higher = more randomness)
-    
+
     Epsilon values have approximately the following effect --
       ε = .001 -> Guaranteed to take the best card.
       ε = .005 -> Takes the best card ~99% of the time
@@ -796,13 +802,13 @@ def pick_card_weighted(scores: dict[str, float], epsilon: float) -> str:
        ε = .05 -> Takes a viable card ~50% of the time.
         ε = .1 -> Chance of a card's selection scales linearly with weight. More often makes bad choices.
         ε > .5 -> Nearly random selection. Only makes good choices by pure chance.
-        
+
     Most CPUs should have ε between 0.005 (extremely wise) and 0.05 (rather unwise)
     """
-    
+
     if epsilon == 0:
         epsilon = .0001
-    
+
     if not scores:
         raise ValueError("Score dictionary must not be empty.")
 
@@ -838,7 +844,7 @@ def pick_card_weighted(scores: dict[str, float], epsilon: float) -> str:
 
 def filter_highest_rarity(draftPackKeys):
     # Group cards by rarity
-    
+
     rarity_groups = {
         'Common': [],
         'Uncommon': [],
@@ -855,7 +861,7 @@ def filter_highest_rarity(draftPackKeys):
     rare_and_mythics = rarity_groups['Rare'] + rarity_groups['Mythic']
     if rare_and_mythics:
         return rare_and_mythics
-    
+
     RARITY_ORDER = ['Common', 'Uncommon', 'Rare', 'Mythic']
 
     # Otherwise return highest available rarity tier
@@ -866,7 +872,7 @@ def filter_highest_rarity(draftPackKeys):
     return []  # Should never happen unless pack is empty or malformed
 
 
-def CPU_DraftPick(draftPackKeys, DraftIDsWeightDict_Temp, epsilon, deckKeys):    
+def CPU_DraftPick(draftPackKeys, DraftIDsWeightDict_Temp, epsilon, deckKeys):
     # Step 1: Filter to only cards of the highest available rarity
     highestRarityCards = filter_highest_rarity(draftPackKeys)
 
@@ -899,17 +905,17 @@ def CreatePack():
     slotRarities = [0,0,0,0,0,0,0,0,0,0,1,1,1,rareSlot]
 
     rarityNames = ['Common', 'Uncommon', 'Rare', 'Mythic']
-        
+
     draftPackKeys = []
     i = 1
     for rarityIndex in slotRarities:
         cardPool = potAll[rarityIndex]
         cardIndex = random.randint(0, len(cardPool)-1)
-        
+
         cardKey = cardPool[cardIndex]
         draftPackKeys.append(cardKey)
         potAll[rarityIndex].remove(cardKey)
-        
+
         del cardKey
         i += 1
     print(f"Pack generated: {', '.join(draftPackKeys)}")
@@ -917,12 +923,12 @@ def CreatePack():
 
 
 def draftOutput(cardIndex, cardNumber):
-        
+
     outputString = ''
-    
+
     rulesLine = "  | "
     otherLine = "  - "
-    
+
     name = FullCardsDict[cardIndex]['name']
     manacost = FullCardsDict[cardIndex]['manacost']
     URL = FullCardsDict[cardIndex]['URL']
@@ -930,22 +936,22 @@ def draftOutput(cardIndex, cardNumber):
     cardtype = FullCardsDict[cardIndex]['type']
     rarity = FullCardsDict[cardIndex]['rarity']
     rulesText = FullCardsDict[cardIndex]['text']
-                
+
     outputString += '\n' + f"{cardNumber}: {rarity}"
     outputString += '\n' + f"{otherLine}{name}"
     outputString += '\n' + f"{otherLine}{manacost}"
     outputString += '\n' + otherLine + cardtype
     outputString += '\n' + rulesText
-    
+
     if 'pt' in FullCardsDict[cardIndex]:
         outputString += '\n' + otherLine + FullCardsDict[cardIndex]['pt']
     if 'loyalty' in FullCardsDict[cardIndex]:
         outputString += '\n' + otherLine + 'Loyalty: ' + FullCardsDict[cardIndex]['loyalty']
-    
+
     outputString += '\n' + otherLine + URL
-    
+
     return outputString
-    
+
 def printCards(cardKeys, Player, OutputType):
 
     outputString = ''
@@ -962,7 +968,7 @@ def printCards(cardKeys, Player, OutputType):
 
     else:
         PackNumber = OutputType
-        
+
 
         outputString += f"Pack #{PackNumber}"
         outputString += '\n'
@@ -973,16 +979,16 @@ def printCards(cardKeys, Player, OutputType):
     cardIndex = 1
 
     for item in cardKeys:
-            
+
         outputString += '\n' + ('--'*10)
-        
+
         if item not in frontSideCards_List:
             outputString += draftOutput(item, cardIndex)
         else:
             outputString += '\n' + draftOutput(item, cardIndex)
             outputString += '\n' + '  !  Backside:'
             outputString += '\n' + draftOutput(backSideRef_Dict[item], cardIndex)
-            
+
         cardIndex += 1
 
     return outputString
@@ -1048,7 +1054,7 @@ async def clean_up_draft():
             except Exception as e:
                 print(f"Failed to remove role from {member}: {e}")
 
-    
+
     with open( mainFolder / "userList.json", 'w') as f: json.dump(DraftPlayerIDs, f)
     with open(mainFolder / "userNames.json", 'w') as f: json.dump(DraftPlayerNames, f)
 
@@ -1081,7 +1087,7 @@ def load_player_deck(user_id):
     except FileNotFoundError:
         print(f"No saved deck for user {user_id}")
         return []
-    
+
 saved_decks_path = os.path.join(mainFolder, "savedDecks")
 os.makedirs(saved_decks_path, exist_ok=True)
 
@@ -1130,7 +1136,7 @@ async def inactivity_monitor():
     while DraftRunning:
         await asyncio.sleep(15)  # Check every 15 seconds
         print("time check")
-        if datetime.now() - last_interaction_time > timedelta(seconds=600):  # End draft if >10 passed since last interaction 
+        if datetime.now() - last_interaction_time > timedelta(seconds=600):  # End draft if >10 passed since last interaction
             print(f"Ending draft for inactivity... Last interaction = {last_interaction_time}, Current = {datetime.now()}")
             endString = ""
             endString += "\n\n"
@@ -1543,11 +1549,11 @@ async def draftPack(interaction: discord.Interaction):
             outputString = manaSymbols(outputString)
             f = discord.File(StringIO(outputString), filename=f"draftPack{PackNumber}Round{RoundNumber}.txt")
             #await interaction.response.send_message('Here\'s your a pack.\nTo put a card into your deck, type "**\draft-select [number]**", where [number] corresponds to the card you want.\nA warning: Your first pick is final, so be sure, and be careful!', file=f, ephemeral=True)
-            
+
             view = CardPickView(userID, cardKeys)
             #await interaction.followup.send_message(view=view, ephemeral=True)
             await interaction.response.send_message('Here\'s your a pack.\nTo put a card into your deck, type "**\draft-select [number]**", where [number] corresponds to the card you want.\nA warning: Your first pick is final, so be sure, and be careful!', view=view, file=f, ephemeral=True)
-        else: 
+        else:
             await interaction.response.send_message("You aren't in the draft, sorry. You'll have to wait for this one to finish, then you can start a new one!", file=f, ephemeral=True)
     else:
         print(f"draft-pack attempt, too late")
@@ -1603,7 +1609,7 @@ async def handle_draft_select(interaction: discord.Interaction, card_number: int
         if card_number > len(draftPackKeys):
             print(f"{interaction.user.display_name}: draft-select (Fail: Value too high)")
             await interaction.followup.send(f"There's only {len(draftPackKeys)} cards in your pack, please pick again!", ephemeral=True)
-        
+
         else: # Run the card selection process
             ChosenCardIndex = draftPackKeys[card_number-1]
 
@@ -1809,7 +1815,7 @@ class DeckOptionsView(View):
                     await interaction.response.send_message("❌ Couldn't send you a DM. Please enable them and try again.", ephemeral=True)
 
         return DMDeckButton()
-    
+
     def CockatriceButton(self):
         class CockatriceFileButton(discord.ui.Button):
             def __init__(self):
