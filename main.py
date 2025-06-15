@@ -40,9 +40,8 @@ if ENVIRONMENT == "development":
 else:
     root_dir = os.getcwd()
     print(f"Running in production environment, root directory: {root_dir}")
-    mainFolder = Path(root_dir) / "SLA_Discord_bot"
-    listFolder = mainFolder / "SavedVariables"
-    CardDatabaseLocation = mainFolder / "SLA.customcards.xml"
+    listFolder = root_dir / "SavedVariables"
+    CardDatabaseLocation = root_dir / "SLA.customcards.xml"
 
 
 
