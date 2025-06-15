@@ -32,16 +32,16 @@ ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
 
 if ENVIRONMENT == "development":
     # Set your preferences
-    dropbox_base = Path.home() / "Dropbox" / "SLA_Discord_bot"
+    dropbox_base = Path.home() + "Dropbox" + "SLA_Discord_bot"
     print(f"Running in development environment, Dropbox base path: {dropbox_base}")
     mainFolder = dropbox_base
-    listFolder = dropbox_base / "SavedVariables"
-    CardDatabaseLocation = dropbox_base / "SLA.customcards.xml"
+    listFolder = dropbox_base + "SavedVariables"
+    CardDatabaseLocation = dropbox_base + "SLA.customcards.xml"
 else:
     root_dir = os.getcwd()
     print(f"Running in production environment, root directory: {root_dir}")
-    listFolder = root_dir / "SavedVariables"
-    CardDatabaseLocation = root_dir / "SLA.customcards.xml"
+    listFolder = root_dir + "SavedVariables"
+    CardDatabaseLocation = root_dir + "SLA.customcards.xml"
 
 
 
@@ -135,17 +135,17 @@ def getSavedCardLists():
     global backSideRef_Dict
 
     # Read in needed card lists
-    with open(listFolder / "frontSideCards_List.json", "r") as file:
+    with open(listFolder + "frontSideCards_List.json", "r") as file:
         frontSideCards_List = json.load(file)
-    with open(listFolder / "backSideCards_List.json", "r") as file:
+    with open(listFolder + "backSideCards_List.json", "r") as file:
         backSideCards_List = json.load(file)
-    with open(listFolder / "lower_commonsFromSheet_List.json", "r") as file:
+    with open(listFolder + "lower_commonsFromSheet_List.json", "r") as file:
         lower_commonsFromSheet_List = json.load(file)
-    with open(listFolder / "lower_uncommonsFromSheet_List.json", "r") as file:
+    with open(listFolder + "lower_uncommonsFromSheet_List.json", "r") as file:
         lower_uncommonsFromSheet_List = json.load(file)
-    with open(listFolder / "lower_raresFromSheet_List.json", "r") as file:
+    with open(listFolder + "lower_raresFromSheet_List.json", "r") as file:
         lower_raresFromSheet_List = json.load(file)
-    with open(listFolder / "lower_mythicsFromSheet_List.json", "r") as file:
+    with open(listFolder + "lower_mythicsFromSheet_List.json", "r") as file:
         lower_mythicsFromSheet_List = json.load(file)
 
     for i in range(len(frontSideCards_List)):
