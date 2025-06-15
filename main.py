@@ -1092,11 +1092,11 @@ saved_decks_path = os.path.join(mainFolder, "savedDecks")
 os.makedirs(saved_decks_path, exist_ok=True)
 
 # Ensure files exist
-if not os.path.isfile(mainFolder / "userList.json"):
-    with open(mainFolder / "userList.json", 'w') as f:
+if not os.path.isfile(mainFolder + "userList.json"):
+    with open(mainFolder + "userList.json", 'w') as f:
         json.dump([], f)
-if not os.path.isfile(mainFolder / "userNames.json"):
-    with open(mainFolder / "userNames.json", 'w') as f:
+if not os.path.isfile(mainFolder + "userNames.json"):
+    with open(mainFolder + "userNames.json", 'w') as f:
         json.dump([], f)
 
 ##  Pull players from files in case bot was reset during draft lobby phase
