@@ -38,10 +38,10 @@ if ENVIRONMENT == "development":
     listFolder = dropbox_base + "SavedVariables"
     CardDatabaseLocation = dropbox_base + "SLA.customcards.xml"
 else:
-    root_dir = os.getcwd()
-    print(f"Running in production environment, root directory: {root_dir}")
-    listFolder = root_dir + "SavedVariables"
-    CardDatabaseLocation = root_dir + "SLA.customcards.xml"
+    mainFolder = os.getcwd()
+    print(f"Running in production environment, root directory: {mainFolder}")
+    listFolder = mainFolder + "SavedVariables"
+    CardDatabaseLocation = mainFolder + "SLA.customcards.xml"
 
 
 
